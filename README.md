@@ -31,7 +31,11 @@ returned values are printed in the document, and one of them is still wrong.
 explicit `429 + Retry-After` instead of invisible waiting. Two results worth the
 repository: a benchmark bug (a new HTTP client per request added 380–680 ms of fake
 latency) and a placement bug (the cache sat inside the generation slot, so a repeat
-question waited 7.7 s behind the model).
+question waited 7.7 s behind the model). The repo also serves a one-page console at
+`/demo` that calls the real endpoints — the screenshot below is that console after one
+live run, cold answers 24.8–35.4 s and the same questions served again in 21–30 ms.
+
+<img src="https://raw.githubusercontent.com/xd6ka/rag-service/main/docs/demo/console_run.png" width="460" alt="rag-service live console: four questions, cold vs cached">
 
 ## How the numbers were made
 
