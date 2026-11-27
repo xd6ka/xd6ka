@@ -12,7 +12,7 @@ the interesting number is usually the failure rate, not the happy path.
 | [agent-toolbench](https://github.com/xd6ka/agent-toolbench) | tool-calling agent over a sandboxed workspace, with its own 41-task benchmark | 13/37 tasks (0.324–0.351 over three runs); 6/6 refusals at 0-shot, **4/6 with few-shot** |
 | [pdf-field-extractor](https://github.com/xd6ka/pdf-field-extractor) | invoice field extraction with schema validation, repair and grounding checks | field-level F1 **0.997**, 20/21 documents fully correct, hallucination 0.167 |
 | [rag-service](https://github.com/xd6ka/rag-service) | the RAG pipeline served: queue, two-tier cache, p50/p95 | cached answer **58 ms** after moving the cache ahead of the generation slot (was 7741 ms) |
-| [rag-quality-gate](https://github.com/xd6ka/rag-quality-gate) | 60-question golden set over the same pipeline, with a gate that fails when quality drops | citation support **1.000** at 3B vs **0.550** at 1.5B — same 40/40 accuracy, 17 right answers with no citation |
+| [rag-quality-gate](https://github.com/xd6ka/rag-quality-gate) | 60-question golden set over the same pipeline, with a gate that fails when quality drops | four models from 397 MB to 1.9 GB, each failing somewhere else — citation support **1.000** at 3B vs **0.550** at 1.5B and **0.391** at 0.5B |
 
 ## What each one actually shows
 
@@ -41,17 +41,18 @@ live run, cold answers 24.8–35.4 s and the same questions served again in 21�
 **rag-quality-gate** — eight generated pump datasheets, 60 questions with a known gold
 string *and* the page that states it, scored three ways that are usually merged: was the
 right page retrieved, was the answer correct, was the *cited* block the page with the fact.
-Runs of the same pipeline at two recall depths, plus `qwen2.5:1.5b` instead of `3b`. The
-gate is a script that compares against a committed baseline, derives its threshold per
-metric from each metric's denominator, and exits `1` on a regression. Three findings: the
-pipeline's default recall depth cut at 12 of the fixture's 24 chunks, so four questions
-never showed the reranker the page it would have ranked first — raising it to 24 lifts
-hit rate and accuracy 0.900 → 1.000 with no model change; the gate's first version flagged
-a hallucination *drop* as a regression, because it did not know two of the metrics are
-error rates; and the 1.5B model keeps the accuracy (40/40, same as 3B) while citation
-support falls 1.000 → 0.550 — 17 right answers with no citation at all, which is the
-failure a correctness-only benchmark cannot see. Multi-hop stays at 5/10 even with twice
-the context, so that gap is the model, not the prompt.
+Runs of the same pipeline at two recall depths, plus four local models from 397 MB to
+1.9 GB. The gate is a script that compares against a committed baseline, derives its
+threshold per metric from each metric's denominator, and exits `1` on a regression. Four
+findings: the pipeline's default recall depth cut at 12 of the fixture's 24 chunks, so four
+questions never showed the reranker the page it would have ranked first — raising it to 24
+lifts hit rate and accuracy 0.900 → 1.000 with no model change; the gate's first version
+flagged a hallucination *drop* as a regression, because it did not know two of the metrics
+are error rates; size is not one axis — `qwen2.5:0.5b` refuses nothing at all (hallucination
+1.000), `llama3.2:1b` refuses seven answerable questions yet cites every right answer,
+`qwen2.5:1.5b` answers 40/40 and cites only 0.550, and 3B only fails at abstention and
+cross-document questions; and multi-hop stays at 5/10 even with twice the context, so that
+gap is the model, not the prompt.
 
 ## How the numbers were made
 
