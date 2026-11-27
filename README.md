@@ -58,6 +58,9 @@ regression, because it did not know that two of the metrics are error rates.
   and which flip).
 - Reports are committed: `eval/reports/*.json` and `bench/reports/*.json` hold the
   per-task status, the answer, the tools called and the failed check.
+- The scoring and sandbox tests run on GitHub Actions on every push (10–17 s per
+  repository, `pytest -q`, no model, no GPU). The model runs stay local, because the
+  runners have no Ollama — CI proves the measuring code works, not that the numbers are big.
 - Where something was not measured — 7B models, GPU, multi-worker serving — the README
   says so instead of estimating.
 
