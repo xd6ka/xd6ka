@@ -1,6 +1,6 @@
 # Agents and RAG, measured on a laptop CPU
 
-I build small AI systems and then try to falsify them. Everything in these three
+I build small AI systems and then try to falsify them. Everything in these four
 repositories runs on one machine with a local 3B model — no paid APIs, no GPU —
 and every claim in them is backed by a report that is committed next to the code.
 
@@ -12,6 +12,7 @@ the interesting number is usually the failure rate, not the happy path.
 | [agent-toolbench](https://github.com/xd6ka/agent-toolbench) | tool-calling agent over a sandboxed workspace, with its own 41-task benchmark | 13/37 tasks (0.324–0.351 over three runs); 6/6 refusals at 0-shot, **4/6 with few-shot** |
 | [pdf-field-extractor](https://github.com/xd6ka/pdf-field-extractor) | invoice field extraction with schema validation, repair and grounding checks | field-level F1 **0.997**, 20/21 documents fully correct, hallucination 0.167 |
 | [rag-service](https://github.com/xd6ka/rag-service) | the RAG pipeline served: queue, two-tier cache, p50/p95 | cached answer **58 ms** after moving the cache ahead of the generation slot (was 7741 ms) |
+| [rag-quality-gate](https://github.com/xd6ka/rag-quality-gate) | 36-question golden set over the same pipeline, with a gate that fails when quality drops | citation support **1.000**, abstention recall 0.750 — and `k=1` passes every single-fact metric while multi-hop falls 0.500 → 0.000 |
 
 ## What each one actually shows
 
@@ -36,6 +37,16 @@ question waited 7.7 s behind the model). The repo also serves a one-page console
 live run, cold answers 24.8–35.4 s and the same questions served again in 21–30 ms.
 
 <img src="https://raw.githubusercontent.com/xd6ka/rag-service/main/docs/demo/console_run.png" width="460" alt="rag-service live console: four questions, cold vs cached">
+
+**rag-quality-gate** — eight generated pump datasheets, 36 questions with a known gold
+string *and* the page that states it, scored three ways that are usually merged: was the
+right page retrieved, was the answer correct, was the *cited* block the page with the fact.
+Three runs of the same pipeline (`k=4`, `k=4`, `k=1`). The gate is a script that compares
+against a committed baseline and exits `1` on a regression. Two findings: cutting the
+context to one block removes every hallucination (0.250 → 0.000) and takes multi-hop
+accuracy to zero in the same run — "hallucinates less" and "answers across documents"
+are separate axes; and the gate's own first version flagged the hallucination *drop* as a
+regression, because it did not know that two of the metrics are error rates.
 
 ## How the numbers were made
 
@@ -66,7 +77,7 @@ benchmarks are quicker and documented in their own READMEs.
 
 ## Currently
 
-Adding the layer all three are missing: **answer quality for RAG** — retrieval
-hit-rate and MRR, plus whether an answer is supported by the passage it cites.
-"Retrieved the right chunk" and "answered correctly from it" are different properties,
-and only one of them is easy to measure.
+Four projects shipped, each with its reports committed. The next question worth
+answering is the one none of them can answer yet: what changes when the model changes —
+the gate is wired to compare pipeline knobs, not a 1.5B against a 3B, and that is the
+comparison most people actually want.
