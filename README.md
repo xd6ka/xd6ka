@@ -10,7 +10,7 @@ the interesting number is usually the failure rate, not the happy path.
 | project | what it is | the number worth reading |
 |---|---|---|
 | [agent-toolbench](https://github.com/xd6ka/agent-toolbench) | tool-calling agent over a sandboxed workspace, with its own 41-task benchmark | 13/37 tasks (0.324–0.351 over three runs); 6/6 refusals at 0-shot, **4/6 with few-shot** |
-| [pdf-field-extractor](https://github.com/xd6ka/pdf-field-extractor) | invoice field extraction with schema validation, repair and grounding checks | field-level F1 **0.997**, 20/21 documents fully correct, hallucination 0.167 |
+| [pdf-field-extractor](https://github.com/xd6ka/pdf-field-extractor) | invoice field extraction with schema validation, repair and grounding checks | F1 **0.997** on clean pages, **0.875** on degraded ones — precision stays 1.000 and only recall falls; hallucination 0.167 |
 | [rag-service](https://github.com/xd6ka/rag-service) | the RAG pipeline served: queue, two-tier cache, p50/p95 | cached answer **58 ms** after moving the cache ahead of the generation slot (was 7741 ms) |
 | [rag-quality-gate](https://github.com/xd6ka/rag-quality-gate) | 60-question golden set over the same pipeline, with a gate that fails when quality drops | four models from 397 MB to 1.9 GB, each failing somewhere else — citation support **1.000** at 3B vs **0.550** at 1.5B and **0.391** at 0.5B |
 
@@ -25,8 +25,13 @@ written after the file was never opened.
 **pdf-field-extractor** — a 60-line PDF writer generates 21 invoices in 7 layout
 variants; the pipeline normalises money and dates, validates the schema
 (`subtotal + tax == total`), repairs at most two fields, and checks that every value
-is literally present in the document. The finding: **grounded ≠ correct** — 99.5 % of
-returned values are printed in the document, and one of them is still wrong.
+is literally present in the document. Two findings. **Grounded ≠ correct** — 99.5 % of
+returned values are printed in the document, and one of them is still wrong. And a clean
+score is a point, not a curve: 12 more documents apply six degradations two at a time,
+where rotation and a `PAID` stamp with a competing total turn out to be free, character
+spacing costs the labels but not the money, a subtotal printed as `4,062.` + `56` comes
+back as `4062.00` and is caught by the arithmetic check, and the one document extracted
+perfectly is *withheld* because grounding cannot see a value the layout cut in half.
 
 **rag-service** — FastAPI around the RAG pipeline, with a SQLite job queue and an
 explicit `429 + Retry-After` instead of invisible waiting. Two results worth the
