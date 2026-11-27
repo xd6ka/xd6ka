@@ -12,7 +12,7 @@ the interesting number is usually the failure rate, not the happy path.
 | [agent-toolbench](https://github.com/xd6ka/agent-toolbench) | tool-calling agent over a sandboxed workspace, with its own 41-task benchmark | 13/37 tasks (0.324–0.351 over three runs); 6/6 refusals at 0-shot, **4/6 with few-shot** |
 | [pdf-field-extractor](https://github.com/xd6ka/pdf-field-extractor) | invoice field extraction with schema validation, repair and grounding checks | field-level F1 **0.997**, 20/21 documents fully correct, hallucination 0.167 |
 | [rag-service](https://github.com/xd6ka/rag-service) | the RAG pipeline served: queue, two-tier cache, p50/p95 | cached answer **58 ms** after moving the cache ahead of the generation slot (was 7741 ms) |
-| [rag-quality-gate](https://github.com/xd6ka/rag-quality-gate) | 36-question golden set over the same pipeline, with a gate that fails when quality drops | citation support **1.000** at 3B vs **0.696** at 1.5B — same accuracy, a third fewer citations |
+| [rag-quality-gate](https://github.com/xd6ka/rag-quality-gate) | 60-question golden set over the same pipeline, with a gate that fails when quality drops | citation support **1.000** at 3B vs **0.550** at 1.5B — same 40/40 accuracy, 17 right answers with no citation |
 
 ## What each one actually shows
 
@@ -38,17 +38,20 @@ live run, cold answers 24.8–35.4 s and the same questions served again in 21�
 
 <img src="https://raw.githubusercontent.com/xd6ka/rag-service/main/docs/demo/console_run.png" width="460" alt="rag-service live console: four questions, cold vs cached">
 
-**rag-quality-gate** — eight generated pump datasheets, 36 questions with a known gold
+**rag-quality-gate** — eight generated pump datasheets, 60 questions with a known gold
 string *and* the page that states it, scored three ways that are usually merged: was the
 right page retrieved, was the answer correct, was the *cited* block the page with the fact.
-Four runs of the same pipeline (`k=4`, `k=4`, `k=1`, and `qwen2.5:1.5b` instead of `3b`).
-The gate is a script that compares against a committed baseline and exits `1` on a
-regression. Three findings: cutting the context to one block removes every hallucination
-(0.250 → 0.000) and takes multi-hop accuracy to zero in the same run; the gate's first
-version flagged that hallucination *drop* as a regression, because it did not know two of
-the metrics are error rates; and the 1.5B model keeps the accuracy (23/24, same as 3B)
-while citation support falls 1.000 → 0.696 — seven right answers with no citation at all,
-which is the failure a correctness-only benchmark cannot see.
+Runs of the same pipeline at two recall depths, plus `qwen2.5:1.5b` instead of `3b`. The
+gate is a script that compares against a committed baseline, derives its threshold per
+metric from each metric's denominator, and exits `1` on a regression. Three findings: the
+pipeline's default recall depth cut at 12 of the fixture's 24 chunks, so four questions
+never showed the reranker the page it would have ranked first — raising it to 24 lifts
+hit rate and accuracy 0.900 → 1.000 with no model change; the gate's first version flagged
+a hallucination *drop* as a regression, because it did not know two of the metrics are
+error rates; and the 1.5B model keeps the accuracy (40/40, same as 3B) while citation
+support falls 1.000 → 0.550 — 17 right answers with no citation at all, which is the
+failure a correctness-only benchmark cannot see. Multi-hop stays at 5/10 even with twice
+the context, so that gap is the model, not the prompt.
 
 ## How the numbers were made
 
@@ -82,8 +85,9 @@ benchmarks are quicker and documented in their own READMEs.
 
 ## Currently
 
-Four projects shipped, each with its reports committed, and the model-size comparison
-inside `rag-quality-gate` is done — 1.5B against 3B on the same 36 questions. What is
-still missing is the harder half of that question: the gate compares one swap at a time
-on 36 questions, and a real decision (which model to ship) wants several model sizes,
-more multi-hop questions and a run-to-run band per metric rather than one tolerance.
+Four projects shipped, each with its reports committed, and the measuring side of
+`rag-quality-gate` is as far as a laptop goes: 60 labelled questions, a band per metric, a
+1.5B-vs-3B comparison, and one retrieval finding that the numbers made visible. What is
+still missing is scale rather than machinery — one run per side, two model sizes, 60
+questions, and no hosted model or GPU in the picture. A decision about which model to ship
+wants more of both.
