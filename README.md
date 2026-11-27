@@ -87,7 +87,8 @@ benchmarks are quicker and documented in their own READMEs.
 
 Four projects shipped, each with its reports committed, and the measuring side of
 `rag-quality-gate` is as far as a laptop goes: 60 labelled questions, a band per metric, a
-1.5B-vs-3B comparison, and one retrieval finding that the numbers made visible. What is
-still missing is scale rather than machinery — one run per side, two model sizes, 60
-questions, and no hosted model or GPU in the picture. A decision about which model to ship
-wants more of both.
+1.5B-vs-3B comparison, a repeat that reproduced all 60 verdicts, and one retrieval finding
+that the numbers made visible. CI gates the committed reports in both directions — the
+improvement must pass, the smaller model must fail. What is still missing is scale rather
+than machinery: two model sizes, 60 questions, one machine, no GPU. A decision about which
+model to ship wants more of both.
