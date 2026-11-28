@@ -12,7 +12,7 @@ the interesting number is usually the failure rate, not the happy path.
 | [agent-toolbench](https://github.com/xd6ka/agent-toolbench) | tool-calling agent over a sandboxed workspace, with its own 41-task benchmark | 13/37 tasks (0.324–0.351 over three runs); 6/6 refusals at 0-shot, **4/6 with few-shot** |
 | [pdf-field-extractor](https://github.com/xd6ka/pdf-field-extractor) | invoice field extraction with schema validation, repair and grounding checks | F1 **0.997** on clean pages, **0.875** on degraded ones — precision stays 1.000 and only recall falls; hallucination 0.167 |
 | [rag-service](https://github.com/xd6ka/rag-service) | the RAG pipeline served: queue, two-tier cache, p50/p95 | cached answer **58 ms** after moving the cache ahead of the generation slot (was 7741 ms) |
-| [rag-quality-gate](https://github.com/xd6ka/rag-quality-gate) | 60-question golden set over the same pipeline, with a gate that fails when quality drops | four models from 397 MB to 1.9 GB, each failing somewhere else — citation support **1.000** at 3B vs **0.550** at 1.5B and **0.391** at 0.5B |
+| [rag-quality-gate](https://github.com/xd6ka/rag-quality-gate) | 60-question golden set over the same pipeline, with a gate that fails when quality drops | four models from 397 MB to 1.9 GB, each failing somewhere else — citation support **1.000** at 3B vs **0.550** at 1.5B and **0.391** at 0.5B; on eight real arXiv papers instead of the fixture, accuracy **0.762** and citation **0.563** |
 
 ## What each one actually shows
 
@@ -67,7 +67,15 @@ two 384-dimension embedders, retrieval only. The challenger wins the dense stage
 (0.875 vs 0.750 hit), the cross-encoder erases the difference when the whole fixture fits
 in the candidate window, and at the pipeline's shipped 12 of 24 chunks the gap returns
 (1.000 vs 0.900) — so the lever is the window, and the embedder would cost a re-index to
-buy what one number already buys.
+buy what one number already buys. The sixth measurement is a different corpus, because the
+generated one was grading the pipeline on its own easy cases: eight open-access arXiv papers
+on retrieval, 1,005 chunks, 25 questions whose every label is a quoted sentence and the page
+it prints on. Accuracy falls 1.000 → 0.762, citation support 1.000 → 0.563, refusal recall
+0.700 → 0.500 — and one refusal becomes *"GraphRAG reports an exact match score of 49.4 on
+the HotpotQA dev set [3]"*, a number, a benchmark and a citation for a sentence no paper
+contains. Building that set also found a scorer bug the fixture could never expose:
+`\b57%\b` never matches, so five verbatim-correct percentage answers were scored wrong
+(accuracy 0.524 → 0.762 after one regex, no model re-run).
 
 ## How the numbers were made
 
@@ -105,8 +113,10 @@ benchmarks are quicker and documented in their own READMEs.
 
 Four projects shipped, each with its reports committed, and the measuring side of
 `rag-quality-gate` is as far as a laptop goes: 60 labelled questions, a band per metric, a
-1.5B-vs-3B comparison, a repeat that reproduced all 60 verdicts, and one retrieval finding
-that the numbers made visible. CI gates the committed reports in both directions — the
-improvement must pass, the smaller model must fail. What is still missing is scale rather
-than machinery: two model sizes, 60 questions, one machine, no GPU. A decision about which
-model to ship wants more of both.
+1.5B-vs-3B comparison, a repeat that reproduced all 60 verdicts, one retrieval finding the
+numbers made visible, and a second corpus of eight real papers that halved the accuracy and
+found a scorer bug in the process. CI gates the committed reports in both directions — the
+improvement must pass, the smaller model must fail — and re-reads every arXiv label against
+the PDF it claims before the suite is allowed to pass. What is still missing is scale rather
+than machinery: two model sizes, 85 questions across two sets, one machine, no GPU. A decision
+about which model to ship wants more of both.
