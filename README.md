@@ -34,12 +34,17 @@ back as `4062.00` and is caught by the arithmetic check, and the one document ex
 perfectly is *withheld* because grounding cannot see a value the layout cut in half.
 
 **rag-service** — FastAPI around the RAG pipeline, with a SQLite job queue and an
-explicit `429 + Retry-After` instead of invisible waiting. Two results worth the
+explicit `429 + Retry-After` instead of invisible waiting. Three results worth the
 repository: a benchmark bug (a new HTTP client per request added 380–680 ms of fake
-latency) and a placement bug (the cache sat inside the generation slot, so a repeat
-question waited 7.7 s behind the model). The repo also serves a one-page console at
-`/demo` that calls the real endpoints — the screenshot below is that console after one
-live run, cold answers 24.8–35.4 s and the same questions served again in 21–30 ms.
+latency), a placement bug (the cache sat inside the generation slot, so a repeat
+question waited 7.7 s behind the model), and an observability bug — `/health` said
+`queue_depth: 0` while three requests sat in `acquire()` for forty seconds. Fixing the
+third one is what made this measurable: fire six asks for a cached question into a
+saturated slot and the placement flag decides whether the first of them waits 73 s or
+135 ms, while the fast path itself slows from 24 ms to 398 ms because the lookup embeds
+on the same cores as the model. The repo also serves a one-page console at `/demo` that
+calls the real endpoints — the screenshot below is that console after one live run, cold
+answers 24.8–35.4 s and the same questions served again in 21–30 ms.
 
 <img src="https://raw.githubusercontent.com/xd6ka/rag-service/main/docs/demo/console_run.png" width="460" alt="rag-service live console: four questions, cold vs cached">
 
@@ -57,7 +62,12 @@ are error rates; size is not one axis — `qwen2.5:0.5b` refuses nothing at all 
 1.000), `llama3.2:1b` refuses seven answerable questions yet cites every right answer,
 `qwen2.5:1.5b` answers 40/40 and cites only 0.550, and 3B only fails at abstention and
 cross-document questions; and multi-hop stays at 5/10 even with twice the context, so that
-gap is the model, not the prompt.
+gap is the model, not the prompt. A fifth measurement is an ablation with no model at all:
+two 384-dimension embedders, retrieval only. The challenger wins the dense stage
+(0.875 vs 0.750 hit), the cross-encoder erases the difference when the whole fixture fits
+in the candidate window, and at the pipeline's shipped 12 of 24 chunks the gap returns
+(1.000 vs 0.900) — so the lever is the window, and the embedder would cost a re-index to
+buy what one number already buys.
 
 ## How the numbers were made
 
@@ -69,9 +79,11 @@ gap is the model, not the prompt.
   and which flip).
 - Reports are committed: `eval/reports/*.json` and `bench/reports/*.json` hold the
   per-task status, the answer, the tools called and the failed check.
-- The scoring and sandbox tests run on GitHub Actions on every push (10–17 s per
-  repository, `pytest -q`, no model, no GPU). The model runs stay local, because the
-  runners have no Ollama — CI proves the measuring code works, not that the numbers are big.
+- The scoring and sandbox tests run on GitHub Actions on every push across all five
+  repositories — the four projects and the base pipeline — `python -m pytest -q`, no
+  model, no GPU. The model runs stay local, because the runners have no Ollama: CI
+  proves the measuring code works, not that the numbers are big. Everything is MIT
+  licensed, because a repository without a licence is a repository nobody may use.
 - Where something was not measured — 7B models, GPU, multi-worker serving — the README
   says so instead of estimating.
 
